@@ -1,4 +1,4 @@
-package dfm
+package db
 
 import (
 	"github.com/aws/aws-sdk-go/aws"

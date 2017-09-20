@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/MYOB-Technology/dataform/pkg/dfm"
+	"github.com/MYOB-Technology/dataform/pkg/db"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
@@ -19,7 +19,7 @@ func main() {
 		Region: aws.String(region),
 	}))
 
-	manager := dfm.NewManager(svc)
+	manager := db.NewManager(svc)
 
 	manager.Create("some-db")
 }
