@@ -1,0 +1,16 @@
+version: '2'
+services:
+  dep:
+    build:
+      context: .
+    working_dir: "/go/src/github.com/MYOB-Technology/dataform/"
+    volumes:
+    - ".:/go/src/github.com/MYOB-Technology/dataform/"
+    entrypoint: dep
+
+  go:
+    image: golang:1.9-alpine
+    working_dir: "/go/src/github.com/MYOB-Technology/dataform/"
+    volumes:
+    - ".:/go/src/github.com/MYOB-Technology/dataform/"
+    entrypoint: go
