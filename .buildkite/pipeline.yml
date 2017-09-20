@@ -3,3 +3,10 @@ steps:
     label: ':go: test'
     agents:
     - queue=central-dev
+
+  - wait:
+
+  - command: make install build publish
+    label: ':shipit:'
+    agents:
+    - queue=central-prod

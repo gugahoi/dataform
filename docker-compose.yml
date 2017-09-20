@@ -1,16 +1,26 @@
 version: '2'
 services:
-  dep:
-    build:
-      context: .
+  base:
+    image: alpine
     working_dir: "/go/src/github.com/MYOB-Technology/dataform/"
     volumes:
     - ".:/go/src/github.com/MYOB-Technology/dataform/"
+    - "${HOME}/.aws:/root/.aws"
+
+  dep:
+    extends:
+      service: base
+    build:
+      context: .
     entrypoint: dep
 
   go:
+    extends:
+      service: base
     image: golang:1.9-alpine
-    working_dir: "/go/src/github.com/MYOB-Technology/dataform/"
-    volumes:
-    - ".:/go/src/github.com/MYOB-Technology/dataform/"
     entrypoint: go
+
+  aws:
+    extends:
+      service: base
+    image: cgswong/aws:aws

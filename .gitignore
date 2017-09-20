@@ -15,3 +15,6 @@
 
 # Vendor folder
 vendor/
+
+# build artifacts
+build/
