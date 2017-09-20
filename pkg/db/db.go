@@ -40,6 +40,7 @@ func (r *Manager) Create(name string) (*rds.CreateDBInstanceOutput, error) {
 func (r *Manager) Delete(name string) (*rds.DeleteDBInstanceOutput, error) {
 	dbInstanceInput := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(name),
+		SkipFinalSnapshot:    aws.Bool(true),
 	}
 
 	result, err := r.Client.DeleteDBInstance(dbInstanceInput)

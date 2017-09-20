@@ -1,6 +1,6 @@
 steps:
   - command: make install test
-    label: ':go: test'
+    label: ':go:'
     agents:
     - queue=central-dev
 

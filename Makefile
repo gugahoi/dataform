@@ -9,7 +9,7 @@ install:
 
 test:
 	@echo "+++ Is this thing working? :hammer_and_wrench:"
-	@${dcr} go test ./... -v
+	@${dcr} go test ./... -v -cover
 
 build:
 	@echo "+++ Laying bricks...:building_construction:"
