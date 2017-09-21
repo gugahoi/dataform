@@ -107,6 +107,34 @@ func TestStatus(t *testing.T) {
 	}
 }
 
+func TestStatAll(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{name: "gohan", err: nil},
+		{name: "goku", err: fmt.Errorf("Goku Error")},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := mockRdsSvc{
+				err: tt.err,
+			}
+			rds := NewManager(svc)
+
+			db, err := rds.StatAll()
+			if err != tt.err {
+				t.Errorf("Expected error to be %v, got %v", tt.err, err)
+			}
+
+			if db != nil {
+				t.Errorf("Expected db to be %v, got %v", nil, db)
+			}
+		})
+	}
+}
+
 type mockRdsSvc struct {
 	rdsiface.RDSAPI
 	CreateDBInstanceOutput    *rds.CreateDBInstanceOutput

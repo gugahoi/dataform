@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/MYOB-Technology/dataform/pkg/db"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/spf13/cobra"
 )
@@ -23,10 +21,8 @@ func init() {
 }
 
 func createFunc(cmd *cobra.Command, args []string) {
-	manager := db.NewManager(rds.New(session.New(&aws.Config{
-		Region: aws.String(awsRegion),
-	})))
-
+	session := getAwsSession()
+	manager := db.NewManager(rds.New(session))
 	instance, err := manager.Create(args[0])
 	if err != nil {
 		fmt.Printf("Failed to create db: %v", err)
