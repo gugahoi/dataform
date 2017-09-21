@@ -10,8 +10,8 @@ import (
 
 // createCmd represents the create command
 var listCmd = &cobra.Command{
-	Use:   "list [rds name]",
-	Short: "list RDS databases",
+	Use:   "list",
+	Short: "list all RDS databases in a region",
 	Run:   listFunc,
 }
 
@@ -23,29 +23,14 @@ func init() {
 func listFunc(cmd *cobra.Command, args []string) {
 	session := getAwsSession()
 	manager := db.NewManager(rds.New(session))
-	if len(args) > 0 {
-		for _, name := range args {
-			list, err := manager.Stat(name)
-			if err != nil {
-				fmt.Printf("%s: %s\n", name, getAwsError(err))
-			} else {
-				printInstances(list)
-			}
-		}
-	} else {
-		list, err := manager.StatAll()
-		if err != nil {
-			fmt.Printf("error: failed to list dbs: %v\n", getAwsError(err))
-			return
-		} else {
-			printInstances(list)
-		}
-	}
-}
 
-// printInstances short form output of the rds instances
-func printInstances(list *rds.DescribeDBInstancesOutput) {
-	for _, db := range list.DBInstances {
-		fmt.Printf("%s: %s\n", *db.DBInstanceIdentifier, *db.DBInstanceStatus)
+	list, err := manager.List()
+	if err != nil {
+		fmt.Printf("Failed listing: %s\n", getAwsError(err))
+		return
+	}
+
+	for idx, db := range list.DBInstances {
+		fmt.Printf("%d\t%s\t%s\n", idx+1, *db.DBInstanceIdentifier, *db.DBInstanceStatus)
 	}
 }

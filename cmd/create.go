@@ -25,7 +25,7 @@ func createFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	instance, err := manager.Create(args[0])
 	if err != nil {
-		fmt.Printf("Failed to create db: %v", err)
+		fmt.Printf("Failed to create RDS Instance: %v", getAwsError(err))
 	}
 	fmt.Println(instance)
 }

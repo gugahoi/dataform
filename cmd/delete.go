@@ -25,7 +25,7 @@ func deleteFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	instance, err := manager.Delete(args[0])
 	if err != nil {
-		fmt.Printf("Failed to create RDS Instance: %v", err)
+		fmt.Printf("Failed to delete RDS Instance: %s", getAwsError(err))
 	}
 
 	fmt.Println(instance)

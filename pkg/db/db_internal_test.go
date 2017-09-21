@@ -107,7 +107,7 @@ func TestStatus(t *testing.T) {
 	}
 }
 
-func TestStatAll(t *testing.T) {
+func TestList(t *testing.T) {
 	cases := []struct {
 		name string
 		err  error
@@ -123,7 +123,7 @@ func TestStatAll(t *testing.T) {
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.StatAll()
+			db, err := rds.List()
 			if err != tt.err {
 				t.Errorf("Expected error to be %v, got %v", tt.err, err)
 			}
