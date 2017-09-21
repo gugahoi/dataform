@@ -50,3 +50,17 @@ func (r *Manager) Delete(name string) (*rds.DeleteDBInstanceOutput, error) {
 
 	return result, nil
 }
+
+// Status returns the status of an RDS Instance
+func (r *Manager) Stat(name string) (*rds.DescribeDBInstancesOutput, error) {
+	dbInstanceInput := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(name),
+	}
+
+	result, err := r.Client.DescribeDBInstances(dbInstanceInput)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
