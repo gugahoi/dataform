@@ -14,22 +14,22 @@ test:
 build:
 	@echo "+++ Laying bricks...:building_construction:"
 	@echo "--- :linux: 64-bit"
-	${dcr} -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 go build -v -o build/dfm-linux-amd64
+	${dcr} -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 go build -v -o dist/dfm-linux-amd64
 	@echo "--- :mac: 64-bit"
-	${dcr} -e CGO_ENABLED=0 -e GOOS=darwin -e GOARCH=amd64 go build -v -o build/dfm-darwin-amd64
+	${dcr} -e CGO_ENABLED=0 -e GOOS=darwin -e GOARCH=amd64 go build -v -o dist/dfm-darwin-amd64
 	@echo "--- :windows: 64-bit"
-	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o build/dfm-windows-amd64
+	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64
 
 publish/s3: build
 	@echo "+++ :s3:"
-	${dcr} aws s3 sync build/ ${release_bucket}/latest/
+	${dcr} aws s3 sync dist/ ${release_bucket}/latest/
 
 publish/github:
-	# GITHUB_TOKEN can be found in buildkite secrets bucket
+	@# GITHUB_TOKEN can be found in buildkite secrets bucket
 	@echo "+++ :octocat:"
-	@test -n "${BUILDKITE_TAG}" && ${dcr} goreleaser
+	@test -n "${BUILDKITE_TAG}" && ${dcr} goreleaser --debug
 
 clean:
 	@echo "--- C ya later"
 	${dcr} go clean
-	rm -rf build/
+	rm -rf dist/

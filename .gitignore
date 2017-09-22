@@ -18,3 +18,4 @@ vendor/
 
 # build artifacts
 build/
+dist/
