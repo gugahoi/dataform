@@ -24,3 +24,10 @@ services:
     extends:
       service: base
     image: cgswong/aws:aws
+
+  goreleaser:
+    extends:
+      service: base
+    image: myobplatform/goreleaser:0.32.0-alpine
+    environment:
+    - GITHUB_TOKEN

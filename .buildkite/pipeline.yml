@@ -4,9 +4,9 @@ steps:
     agents:
     - queue=central-dev
 
-  - wait:
+  - wait: ':shipit'
 
-  - command: make install build publish
+  - command: make install build publish/s3 publish/github
     label: ':shipit:'
     agents:
     - queue=central-prod
