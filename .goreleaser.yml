@@ -8,4 +8,4 @@ builds:
 
 archive:
   name_template: "dfm-{{ .Os }}-{{ .Arch }}"
-  format: zip
+  format: binary
