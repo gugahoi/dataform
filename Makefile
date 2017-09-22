@@ -11,14 +11,14 @@ test:
 	@echo "+++ Is this thing working? :hammer_and_wrench:"
 	@${dcr} go test ./... -v -cover
 
-build: install
+build: clean install
 	@echo "+++ Laying bricks...:building_construction:"
 	@echo "--- :linux: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 go build -v -o dist/dfm-linux-amd64
 	@echo "--- :mac: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=darwin -e GOARCH=amd64 go build -v -o dist/dfm-darwin-amd64
 	@echo "--- :windows: 64-bit"
-	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64
+	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64.exe
 
 ifdef BUILDKITE_TAG
 publish: install
