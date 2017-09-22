@@ -32,7 +32,7 @@ publish/github:
 ifdef BUILDKITE_TAG
 	@# GITHUB_TOKEN can be found in buildkite secrets bucket
 	@echo "+++ :octocat:"
-	${dcr} goreleaser --debug
+	${dcr} goreleaser --debug --skip-validate
 else
 	@echo "Skipping :octocat: release"
 endif
