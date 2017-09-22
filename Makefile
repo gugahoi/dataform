@@ -20,14 +20,22 @@ build:
 	@echo "--- :windows: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64
 
-publish/s3: build
+publish/s3:
 	@echo "+++ :s3:"
+ifdef BUILDKITE_TAG
+	${dcr} aws s3 sync dist/ ${release_bucket}/${BUILDKITE_TAG}/
+else
 	${dcr} aws s3 sync dist/ ${release_bucket}/latest/
+endif
 
 publish/github:
+ifdef BUILDKITE_TAG
 	@# GITHUB_TOKEN can be found in buildkite secrets bucket
 	@echo "+++ :octocat:"
-	@test -n "${BUILDKITE_TAG}" && ${dcr} goreleaser --debug
+	${dcr} goreleaser --debug
+else
+	@echo "Skipping :octocat: release"
+endif
 
 clean:
 	@echo "--- C ya later"

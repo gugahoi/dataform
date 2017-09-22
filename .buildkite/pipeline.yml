@@ -6,7 +6,7 @@ steps:
 
   - wait: ':shipit'
 
-  - command: make install build publish/s3 publish/github
+  - command: make install publish/github publish/s3
     label: ':shipit:'
     agents:
     - queue=central-prod
