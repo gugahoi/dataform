@@ -11,7 +11,7 @@ import (
 // createCmd represents the create command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "list all RDS databases in a region",
+	Short: "List all RDS databases in a region",
 	Run:   listFunc,
 }
 
@@ -26,11 +26,11 @@ func listFunc(cmd *cobra.Command, args []string) {
 
 	list, err := manager.List()
 	if err != nil {
-		fmt.Printf("Failed listing: %s\n", getAwsError(err))
+		fmt.Printf("Failed listing RDS instances: %s\n", getAwsError(err))
 		return
 	}
 
-	for idx, db := range list.DBInstances {
-		fmt.Printf("%d\t%s\t%s\n", idx+1, *db.DBInstanceIdentifier, *db.DBInstanceStatus)
+	for _, db := range list.DBInstances {
+		fmt.Printf("%s\t%s\n", *db.DBInstanceIdentifier, *db.DBInstanceStatus)
 	}
 }

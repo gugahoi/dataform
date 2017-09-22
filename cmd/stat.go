@@ -11,7 +11,7 @@ import (
 // createCmd represents the create command
 var statCmd = &cobra.Command{
 	Use:   "stat [rds name]",
-	Short: "stat RDS databases",
+	Short: "Describe an RDS database",
 	Args:  cobra.ExactArgs(1),
 	Run:   statFunc,
 }
@@ -31,5 +31,6 @@ func statFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("%s: %s\n", name, getAwsError(err))
 		return
 	}
+
 	fmt.Println(i.DBInstances)
 }
