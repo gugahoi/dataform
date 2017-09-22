@@ -1,4 +1,4 @@
-.PHONY: install test build publish/s3 publish/github clean
+.PHONY: install test build publish clean
 
 dcr := docker-compose run --rm
 release_bucket := s3://myob-dataform-release
@@ -11,7 +11,7 @@ test:
 	@echo "+++ Is this thing working? :hammer_and_wrench:"
 	@${dcr} go test ./... -v -cover
 
-build:
+build: install
 	@echo "+++ Laying bricks...:building_construction:"
 	@echo "--- :linux: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=amd64 go build -v -o dist/dfm-linux-amd64
@@ -20,21 +20,17 @@ build:
 	@echo "--- :windows: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64
 
-publish/s3:
-	@echo "+++ :s3:"
 ifdef BUILDKITE_TAG
-	${dcr} aws s3 sync dist/ ${release_bucket}/${BUILDKITE_TAG}/
-else
-	${dcr} aws s3 sync dist/ ${release_bucket}/latest/
-endif
-
-publish/github:
-ifdef BUILDKITE_TAG
+publish: install
 	@# GITHUB_TOKEN can be found in buildkite secrets bucket
 	@echo "+++ :octocat:"
-	${dcr} goreleaser --debug --skip-validate
+	${dcr} goreleaser --skip-validate --rm-dist
+	@echo "+++ :s3:"
+	${dcr} aws s3 sync dist/ ${release_bucket}/${BUILDKITE_TAG}/
 else
-	@echo "Skipping :octocat: release"
+publish: build
+	@echo "+++ :s3:"
+	${dcr} aws s3 sync dist/ ${release_bucket}/latest/
 endif
 
 clean:
