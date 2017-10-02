@@ -30,5 +30,5 @@ func createFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("Failed to create RDS Instance: %v", getAwsError(err))
 	}
 
-	fmt.Printf("%s\t%s\t%s\t%d\n", *instance.ARN, *instance.Status, *instance.Address)
+	fmt.Printf("%s\t%s\t%s\n", *instance.ARN, *instance.Status, *instance.Address)
 }
