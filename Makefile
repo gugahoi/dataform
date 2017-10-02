@@ -26,11 +26,11 @@ publish: install
 	@echo "+++ :octocat:"
 	${dcr} goreleaser --skip-validate --rm-dist
 	@echo "+++ :s3:"
-	${dcr} aws s3 sync dist/ ${release_bucket}/${BUILDKITE_TAG}/
+	${dcr} aws s3 sync --acl public-read dist/ ${release_bucket}/${BUILDKITE_TAG}/
 else
 publish: build
 	@echo "+++ :s3:"
-	${dcr} aws s3 sync dist/ ${release_bucket}/latest/
+	${dcr} aws s3 sync --acl public-read dist/ ${release_bucket}/latest/
 endif
 
 clean:
