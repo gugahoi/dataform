@@ -11,6 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 )
 
+var cases = []struct {
+	name, az, arn string
+	instances     int
+	err           error
+}{
+	{name: "Happy Path", az: "gohan-az", arn: "here-is-the-arn", instances: 2, err: nil},
+	{name: "Sad Path", err: fmt.Errorf("Goku Error")},
+}
+
 func TestNewRds(t *testing.T) {
 	svc := rds.New(session.New(&aws.Config{
 		Region: aws.String("ap-southeast-2"),
@@ -24,18 +33,21 @@ func TestNewRds(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-	}{
-		{name: "gohan", err: nil},
-		{name: "goku", err: fmt.Errorf("goku error")},
-	}
-
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			DBInstance := rds.DBInstance{
+				AvailabilityZone:     &tt.az,
+				DBInstanceIdentifier: &tt.name,
+				DBInstanceArn:        &tt.arn,
+				Endpoint:             &rds.Endpoint{},
+			}
+			expectedDB := FromDBInstance(&DBInstance)
+
 			svc := mockRdsSvc{
 				err: tt.err,
+				CreateDBInstanceOutput: &rds.CreateDBInstanceOutput{
+					DBInstance: &DBInstance,
+				},
 			}
 			rds := NewManager(svc)
 
@@ -45,25 +57,35 @@ func TestCreate(t *testing.T) {
 			}
 
 			if db != nil {
-				t.Errorf("Expected db to be %v, got %v", nil, db)
+				if db.ARN != expectedDB.ARN {
+					t.Errorf("Expected db arn to be %v, got %v", expectedDB, db)
+				}
+				if db.Name != expectedDB.Name {
+					t.Errorf("Expected db name to be %v, got %v", expectedDB, db)
+				}
+				if db.AZ != expectedDB.AZ {
+					t.Errorf("Expected db AZ to be %v, got %v", expectedDB, db)
+				}
 			}
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-	}{
-		{name: "gohan", err: nil},
-		{name: "goku", err: fmt.Errorf("Goku Error")},
-	}
-
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			DBInstance := rds.DBInstance{
+				AvailabilityZone:     &tt.az,
+				DBInstanceIdentifier: &tt.name,
+				DBInstanceArn:        &tt.arn,
+			}
+			expectedDB := FromDBInstance(&DBInstance)
+
 			svc := mockRdsSvc{
 				err: tt.err,
+				DeleteDBInstanceOutput: &rds.DeleteDBInstanceOutput{
+					DBInstance: &DBInstance,
+				},
 			}
 			rds := NewManager(svc)
 
@@ -73,63 +95,79 @@ func TestDelete(t *testing.T) {
 			}
 
 			if db != nil {
-				t.Errorf("Expected db to be %v, got %v", nil, db)
+				if db.ARN != expectedDB.ARN {
+					t.Errorf("Expected db ARN to be %v, got %v", expectedDB.ARN, db.ARN)
+				}
+				if db.Name != expectedDB.Name {
+					t.Errorf("Expected db name to be %v, got %v", expectedDB.Name, db.Name)
+				}
+				if db.AZ != expectedDB.AZ {
+					t.Errorf("Expected db AZ to be %v, got %v", expectedDB.AZ, db.AZ)
+				}
 			}
 		})
 	}
 }
 
-func TestStatus(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-	}{
-		{name: "gohan", err: nil},
-		{name: "goku", err: fmt.Errorf("Goku Error")},
-	}
+// func TestStatus(t *testing.T) {
+// 	for _, tt := range cases {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			DBInstance := rds.DBInstance{
+// 				AvailabilityZone: &tt.az,
+// 				DBInstanceIdentifier:           &tt.name,
+// 				DBInstanceArn:    &tt.arn,
+// 			}
+// 			expectedDB := FromDBInstance(&DBInstance)
 
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := mockRdsSvc{
-				err: tt.err,
-			}
-			rds := NewManager(svc)
+// 			svc := mockRdsSvc{
+// 				err: tt.err,
+// 				DeleteDBInstanceOutput: &rds.DeleteDBInstanceOutput{
+// 					DBInstance: &DBInstance,
+// 				},
+// 			}
 
-			db, err := rds.Stat(tt.name)
-			if err != tt.err {
-				t.Errorf("Expected error to be %v, got %v", tt.err, err)
-			}
+// 			svc := mockRdsSvc{
+// 				err: tt.err,
+// 			}
+// 			rds := NewManager(svc)
 
-			if db != nil {
-				t.Errorf("Expected db to be %v, got %v", nil, db)
-			}
-		})
-	}
-}
+// 			db, err := rds.Stat(tt.name)
+// 			if err != tt.err {
+// 				t.Errorf("Expected error to be %v, got %v", tt.err, err)
+// 			}
+
+// 			if db != nil {
+// 				t.Errorf("Expected db to be %v, got %v", nil, db)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestList(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-	}{
-		{name: "gohan", err: nil},
-		{name: "goku", err: fmt.Errorf("Goku Error")},
-	}
-
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			DBInstances := []*rds.DBInstance{}
+			for i := 0; i < tt.instances; i++ {
+				DBInstances = append(DBInstances, &rds.DBInstance{})
+			}
+
+			expectedDBs := FromDBInstances(DBInstances)
+
 			svc := mockRdsSvc{
 				err: tt.err,
+				DescribeDBInstancesOutput: &rds.DescribeDBInstancesOutput{
+					DBInstances: DBInstances,
+				},
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.List()
+			result, err := rds.List()
 			if err != tt.err {
 				t.Errorf("Expected error to be %v, got %v", tt.err, err)
 			}
 
-			if db != nil {
-				t.Errorf("Expected db to be %v, got %v", nil, db)
+			if len(result) != len(expectedDBs) {
+				t.Errorf("Expected %d results, got %d", len(expectedDBs), len(result))
 			}
 		})
 	}

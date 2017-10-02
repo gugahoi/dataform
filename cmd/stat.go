@@ -32,5 +32,5 @@ func statFunc(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	fmt.Println(i.DBInstances)
+	fmt.Println(i)
 }

@@ -30,5 +30,5 @@ func deleteFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("Failed to delete RDS Instance: %s", getAwsError(err))
 	}
 
-	fmt.Printf("%s\t%s\n", *instance.DBInstance.DBInstanceArn, *instance.DBInstance.DBInstanceStatus)
+	fmt.Printf("%s\t%s\n", *instance.ARN, *instance.Status)
 }

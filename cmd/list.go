@@ -24,13 +24,13 @@ func listFunc(cmd *cobra.Command, args []string) {
 	session := getAwsSession()
 	manager := db.NewManager(rds.New(session))
 
-	list, err := manager.List()
+	results, err := manager.List()
 	if err != nil {
 		fmt.Printf("Failed listing RDS instances: %s\n", getAwsError(err))
 		return
 	}
 
-	for _, db := range list.DBInstances {
-		fmt.Printf("%s\t%s\n", *db.DBInstanceIdentifier, *db.DBInstanceStatus)
+	for _, db := range results {
+		fmt.Printf("%s\t%s\t%s\n", *db.Name, *db.Status, *db.ARN)
 	}
 }

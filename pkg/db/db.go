@@ -18,7 +18,7 @@ func NewManager(svc rdsiface.RDSAPI) *Manager {
 }
 
 // Create an RDS Instance with the given name.
-func (r *Manager) Create(name string) (*rds.CreateDBInstanceOutput, error) {
+func (r *Manager) Create(name string) (*DB, error) {
 	dbInput := &rds.CreateDBInstanceInput{
 		AllocatedStorage:     aws.Int64(5),
 		DBInstanceClass:      aws.String("db.t2.micro"),
@@ -33,11 +33,11 @@ func (r *Manager) Create(name string) (*rds.CreateDBInstanceOutput, error) {
 		return nil, err
 	}
 
-	return result, nil
+	return FromDBInstance(result.DBInstance), nil
 }
 
 // Delete an RDS Instance with the given name
-func (r *Manager) Delete(name string) (*rds.DeleteDBInstanceOutput, error) {
+func (r *Manager) Delete(name string) (*DB, error) {
 	dbInstanceInput := &rds.DeleteDBInstanceInput{
 		DBInstanceIdentifier: aws.String(name),
 		SkipFinalSnapshot:    aws.Bool(true),
@@ -48,11 +48,11 @@ func (r *Manager) Delete(name string) (*rds.DeleteDBInstanceOutput, error) {
 		return nil, err
 	}
 
-	return result, nil
+	return FromDBInstance(result.DBInstance), nil
 }
 
 // Stat returns the status of an RDS Instance
-func (r *Manager) Stat(name string) (*rds.DescribeDBInstancesOutput, error) {
+func (r *Manager) Stat(name string) ([]*DB, error) {
 	dbInstanceInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(name),
 	}
@@ -62,11 +62,16 @@ func (r *Manager) Stat(name string) (*rds.DescribeDBInstancesOutput, error) {
 		return nil, err
 	}
 
-	return result, nil
+	DBs := []*DB{}
+	for _, instance := range result.DBInstances {
+		DBs = append(DBs, FromDBInstance(instance))
+	}
+
+	return DBs, nil
 }
 
 // List returns the status of all RDS Instances
-func (r *Manager) List() (*rds.DescribeDBInstancesOutput, error) {
+func (r *Manager) List() ([]*DB, error) {
 	dbInstanceInput := &rds.DescribeDBInstancesInput{}
 
 	result, err := r.Client.DescribeDBInstances(dbInstanceInput)
@@ -74,5 +79,5 @@ func (r *Manager) List() (*rds.DescribeDBInstancesOutput, error) {
 		return nil, err
 	}
 
-	return result, nil
+	return FromDBInstances(result.DBInstances), nil
 }
