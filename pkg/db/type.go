@@ -15,19 +15,19 @@ type DB struct {
 	Address *string
 }
 
-// FromDBInstance converts an *rds.DBInstance type to *DB
+// FromDBInstance converts an *rds.DBInstance type to *DB type
 func FromDBInstance(r *rds.DBInstance) *DB {
-	var address *string
-	if r.Endpoint != nil && r.Endpoint.Address != nil {
-		address = r.Endpoint.Address
-	}
+	// var address *string
+	// if r.Endpoint != nil && r.Endpoint.Address != nil {
+	// 	address = r.Endpoint.Address
+	// }
 
 	return &DB{
-		ARN:     r.DBInstanceArn,
-		Name:    r.DBInstanceIdentifier,
-		AZ:      r.AvailabilityZone,
-		Status:  r.DBInstanceStatus,
-		Address: address,
+		ARN:    r.DBInstanceArn,
+		Name:   r.DBInstanceIdentifier,
+		Status: r.DBInstanceStatus,
+		// AZ:     r.AvailabilityZone,
+		// Address: address,
 	}
 }
 
