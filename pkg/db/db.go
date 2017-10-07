@@ -52,7 +52,7 @@ func (r *Manager) Delete(name string) (*DB, error) {
 }
 
 // Stat returns the status of an RDS Instance
-func (r *Manager) Stat(name string) ([]*DB, error) {
+func (r *Manager) Stat(name string) (*DB, error) {
 	dbInstanceInput := &rds.DescribeDBInstancesInput{
 		DBInstanceIdentifier: aws.String(name),
 	}
@@ -62,12 +62,11 @@ func (r *Manager) Stat(name string) ([]*DB, error) {
 		return nil, err
 	}
 
-	DBs := []*DB{}
-	for _, instance := range result.DBInstances {
-		DBs = append(DBs, FromDBInstance(instance))
+	if len(result.DBInstances) == 0 {
+		return nil, nil
 	}
 
-	return DBs, nil
+	return FromDBInstance(result.DBInstances[0]), nil
 }
 
 // List returns the status of all RDS Instances
