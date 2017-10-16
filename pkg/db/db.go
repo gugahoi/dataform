@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
@@ -17,15 +19,21 @@ func NewManager(svc rdsiface.RDSAPI) *Manager {
 	return &Manager{svc}
 }
 
-// Create an RDS Instance with the given name.
-func (r *Manager) Create(name string) (*DB, error) {
+var errInvalidUsernamePassword = fmt.Errorf("username and password cannot be empty")
+
+// Create an RDS Instance with the given name, master username and master password.
+func (r *Manager) Create(name, username, password string) (*DB, error) {
+	if username == "" || password == "" {
+		return nil, errInvalidUsernamePassword
+	}
+
 	dbInput := &rds.CreateDBInstanceInput{
 		AllocatedStorage:     aws.Int64(5),
 		DBInstanceClass:      aws.String("db.t2.micro"),
 		DBInstanceIdentifier: aws.String(name),
 		Engine:               aws.String("postgres"),
-		MasterUserPassword:   aws.String("mypassword"),
-		MasterUsername:       aws.String("masteruser"),
+		MasterUsername:       aws.String(username),
+		MasterUserPassword:   aws.String(password),
 	}
 
 	result, err := r.Client.CreateDBInstance(dbInput)

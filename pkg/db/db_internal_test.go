@@ -33,27 +33,38 @@ func TestNewRds(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
+	var cases = []struct {
+		name, az, arn      string
+		username, password string
+		instances          int
+		err                error
+	}{
+		{name: "Happy Path", username: "trunks", password: "bulma", az: "gohan-az", arn: "here-is-the-arn", instances: 2, err: nil},
+		{name: "Empty Username", username: "", password: "bulma", err: errInvalidUsernamePassword},
+		{name: "Empty Password", username: "trunks", password: "", err: errInvalidUsernamePassword},
+	}
+
+	for _, tC := range cases {
+		t.Run(tC.name, func(t *testing.T) {
 			DBInstance := rds.DBInstance{
-				AvailabilityZone:     &tt.az,
-				DBInstanceIdentifier: &tt.name,
-				DBInstanceArn:        &tt.arn,
+				AvailabilityZone:     &tC.az,
+				DBInstanceIdentifier: &tC.name,
+				DBInstanceArn:        &tC.arn,
 				Endpoint:             &rds.Endpoint{},
 			}
 			expectedDB := FromDBInstance(&DBInstance)
 
 			svc := mockRdsSvc{
-				err: tt.err,
+				err: tC.err,
 				CreateDBInstanceOutput: &rds.CreateDBInstanceOutput{
 					DBInstance: &DBInstance,
 				},
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.Create(tt.name)
-			if err != tt.err {
-				t.Errorf("Expected error to be %v, got %v", tt.err, err)
+			db, err := rds.Create(tC.name, tC.username, tC.password)
+			if err != tC.err {
+				t.Errorf("Expected error to be %v, got %v", tC.err, err)
 			}
 
 			if db != nil {
@@ -72,26 +83,26 @@ func TestCreate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tC := range cases {
+		t.Run(tC.name, func(t *testing.T) {
 			DBInstance := rds.DBInstance{
-				AvailabilityZone:     &tt.az,
-				DBInstanceIdentifier: &tt.name,
-				DBInstanceArn:        &tt.arn,
+				AvailabilityZone:     &tC.az,
+				DBInstanceIdentifier: &tC.name,
+				DBInstanceArn:        &tC.arn,
 			}
 			expectedDB := FromDBInstance(&DBInstance)
 
 			svc := mockRdsSvc{
-				err: tt.err,
+				err: tC.err,
 				DeleteDBInstanceOutput: &rds.DeleteDBInstanceOutput{
 					DBInstance: &DBInstance,
 				},
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.Delete(tt.name)
-			if err != tt.err {
-				t.Errorf("Expected error to be %v, got %v", tt.err, err)
+			db, err := rds.Delete(tC.name)
+			if err != tC.err {
+				t.Errorf("Expected error to be %v, got %v", tC.err, err)
 			}
 
 			if db != nil {
@@ -145,17 +156,17 @@ func TestStatus(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tC := range cases {
+		t.Run(tC.name, func(t *testing.T) {
 			DBInstances := []*rds.DBInstance{}
-			for i := 0; i < tt.instances; i++ {
+			for i := 0; i < tC.instances; i++ {
 				DBInstances = append(DBInstances, &rds.DBInstance{})
 			}
 
 			expectedDBs := FromDBInstances(DBInstances)
 
 			svc := mockRdsSvc{
-				err: tt.err,
+				err: tC.err,
 				DescribeDBInstancesOutput: &rds.DescribeDBInstancesOutput{
 					DBInstances: DBInstances,
 				},
@@ -163,8 +174,8 @@ func TestList(t *testing.T) {
 			rds := NewManager(svc)
 
 			result, err := rds.List()
-			if err != tt.err {
-				t.Errorf("Expected error to be %v, got %v", tt.err, err)
+			if err != tC.err {
+				t.Errorf("Expected error to be %v, got %v", tC.err, err)
 			}
 
 			if len(result) != len(expectedDBs) {
@@ -177,12 +188,16 @@ func TestList(t *testing.T) {
 type mockRdsSvc struct {
 	rdsiface.RDSAPI
 	CreateDBInstanceOutput    *rds.CreateDBInstanceOutput
+	CreateMasterUsername      *string
+	CreateMasterPassword      *string
 	DeleteDBInstanceOutput    *rds.DeleteDBInstanceOutput
 	DescribeDBInstancesOutput *rds.DescribeDBInstancesOutput
 	err                       error
 }
 
 func (m mockRdsSvc) CreateDBInstance(input *rds.CreateDBInstanceInput) (*rds.CreateDBInstanceOutput, error) {
+	m.CreateMasterUsername = input.MasterUsername
+	m.CreateMasterPassword = input.MasterUserPassword
 	return m.CreateDBInstanceOutput, m.err
 }
 

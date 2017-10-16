@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var masterUsername string
+var masterPassword string
+
 // createCmd represents the create command
 var createCmd = &cobra.Command{
 	Use:   "create [rds name]",
@@ -17,6 +20,8 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
+	createCmd.Flags().StringVarP(&masterUsername, "username", "u", "", "master username for db")
+	createCmd.Flags().StringVarP(&masterPassword, "password", "p", "", "master password for db")
 	RootCmd.AddCommand(createCmd)
 }
 
@@ -25,7 +30,7 @@ func createFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	name := args[0]
 
-	instance, err := manager.Create(name)
+	instance, err := manager.Create(name, masterUsername, masterPassword)
 	if err != nil {
 		fmt.Printf("Failed to create RDS Instance: %v", getAwsError(err))
 		return
