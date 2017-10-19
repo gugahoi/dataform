@@ -10,8 +10,7 @@ services:
   dep:
     extends:
       service: base
-    build:
-      context: .
+    image: myobplatform/go-dep:1.8
     entrypoint: dep
 
   go:

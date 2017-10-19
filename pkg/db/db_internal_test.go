@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 
@@ -12,11 +13,12 @@ import (
 )
 
 var cases = []struct {
-	name, az, arn string
-	instances     int
-	err           error
+	name, arn string
+	multiaz   bool
+	instances int
+	err       error
 }{
-	{name: "Happy Path", az: "gohan-az", arn: "here-is-the-arn", instances: 2, err: nil},
+	{name: "Happy Path", multiaz: true, arn: "here-is-the-arn", err: nil},
 	{name: "Sad Path", err: fmt.Errorf("Goku Error")},
 }
 
@@ -33,23 +35,37 @@ func TestNewRds(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	defaultInstanceType := "db.t2.micro"
 	var cases = []struct {
-		name, az, arn      string
-		username, password string
-		instances          int
-		err                error
+		name, arn, masterusername, masterpassword string
+		multiaz                                   bool
+		username, password, dbinstanceclass       string
+		instances                                 int
+		err                                       error
 	}{
-		{name: "Happy Path", username: "trunks", password: "bulma", az: "gohan-az", arn: "here-is-the-arn", instances: 2, err: nil},
-		{name: "Empty Username", username: "", password: "bulma", err: errInvalidUsernamePassword},
-		{name: "Empty Password", username: "trunks", password: "", err: errInvalidUsernamePassword},
+		{name: "Happy Path", username: "trunks", password: "bulma", multiaz: true, dbinstanceclass: defaultInstanceType, arn: "here-is-the-arn", err: nil},
+		{name: "Empty Username", username: "", password: "bulma", multiaz: true, err: errDbMasterUsernameMissing},
+		{name: "Empty Password", username: "trunks", password: "", multiaz: true, err: errDbMasterUserPasswordMissing},
+		{name: "Missing Username", password: "bulma", multiaz: true, err: errDbMasterUsernameMissing},
+		{name: "Missing Password", username: "trunks", multiaz: true, err: errDbMasterUserPasswordMissing},
+		{name: "Invalid Instance Type", username: "trunks", multiaz: true, dbinstanceclass: "db.t2.duff", err: errDbMasterUserPasswordMissing},
 	}
 
 	for _, tC := range cases {
 		t.Run(tC.name, func(t *testing.T) {
+			DBInput := &DB{
+				Name:               &tC.name,
+				MasterUsername:     &tC.username,
+				MasterUserPassword: &tC.password,
+				MultiAZ:            &tC.multiaz,
+				DBInstanceClass:    &tC.dbinstanceclass,
+			}
 			DBInstance := rds.DBInstance{
-				AvailabilityZone:     &tC.az,
+				MultiAZ:              &tC.multiaz,
 				DBInstanceIdentifier: &tC.name,
 				DBInstanceArn:        &tC.arn,
+				DBInstanceClass:      &defaultInstanceType,
+				MasterUsername:       &tC.username,
 				Endpoint:             &rds.Endpoint{},
 			}
 			expectedDB := FromDBInstance(&DBInstance)
@@ -62,7 +78,7 @@ func TestCreate(t *testing.T) {
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.Create(tC.name, tC.username, tC.password)
+			db, err := rds.Create(DBInput)
 			if err != tC.err {
 				t.Errorf("Expected error to be %v, got %v", tC.err, err)
 			}
@@ -74,8 +90,8 @@ func TestCreate(t *testing.T) {
 				if db.Name != expectedDB.Name {
 					t.Errorf("Expected db name to be %v, got %v", expectedDB, db)
 				}
-				if db.AZ != expectedDB.AZ {
-					t.Errorf("Expected db AZ to be %v, got %v", expectedDB, db)
+				if db.MultiAZ != expectedDB.MultiAZ {
+					t.Errorf("Expected db MultiAZ to be %v, got %v", expectedDB, db)
 				}
 			}
 		})
@@ -86,7 +102,7 @@ func TestDelete(t *testing.T) {
 	for _, tC := range cases {
 		t.Run(tC.name, func(t *testing.T) {
 			DBInstance := rds.DBInstance{
-				AvailabilityZone:     &tC.az,
+				MultiAZ:              &tC.multiaz,
 				DBInstanceIdentifier: &tC.name,
 				DBInstanceArn:        &tC.arn,
 			}
@@ -112,8 +128,8 @@ func TestDelete(t *testing.T) {
 				if db.Name != expectedDB.Name {
 					t.Errorf("Expected db name to be %v, got %v", expectedDB.Name, db.Name)
 				}
-				if db.AZ != expectedDB.AZ {
-					t.Errorf("Expected db AZ to be %v, got %v", expectedDB.AZ, db.AZ)
+				if db.MultiAZ != expectedDB.MultiAZ {
+					t.Errorf("Expected db MultiAZ to be %v, got %v", expectedDB.MultiAZ, db.MultiAZ)
 				}
 			}
 		})
@@ -185,6 +201,34 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestGenerateRandomString(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		size     int
+		allowed  string
+		expected string
+	}{
+		{
+			desc: "0 size", size: 0, allowed: "abc", expected: "",
+		},
+		{
+			desc: "Valid Size and Some Chars", size: 10, allowed: "abc", expected: "accbacccac",
+		},
+		{
+			desc: "Valid size with symbols", size: 8, allowed: "!@#$%", expected: "@@@%@#@@",
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			got := generateRandomString(tC.size, tC.allowed, mockClock{})
+			if got != tC.expected {
+				t.Errorf("expected string to be %v, got %v", tC.expected, got)
+			}
+		})
+	}
+}
+
 type mockRdsSvc struct {
 	rdsiface.RDSAPI
 	CreateDBInstanceOutput    *rds.CreateDBInstanceOutput
@@ -207,4 +251,11 @@ func (m mockRdsSvc) DeleteDBInstance(input *rds.DeleteDBInstanceInput) (*rds.Del
 
 func (m mockRdsSvc) DescribeDBInstances(input *rds.DescribeDBInstancesInput) (*rds.DescribeDBInstancesOutput, error) {
 	return m.DescribeDBInstancesOutput, m.err
+}
+
+// mocked clock
+type mockClock struct{}
+
+func (mockClock) Now() time.Time {
+	return time.Unix(123456, 0)
 }

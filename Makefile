@@ -36,4 +36,4 @@ endif
 clean:
 	@echo "--- C ya later"
 	${dcr} go clean
-	rm -rf dist/
+	${dcr} base rm -rf dist/

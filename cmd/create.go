@@ -30,7 +30,12 @@ func createFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	name := args[0]
 
-	instance, err := manager.Create(name, masterUsername, masterPassword)
+	dbinput := &db.DB{
+		Name:               &name,
+		MasterUsername:     &masterUsername,
+		MasterUserPassword: &masterPassword,
+	}
+	instance, err := manager.Create(dbinput)
 	if err != nil {
 		fmt.Printf("Failed to create RDS Instance: %v", getAwsError(err))
 		return

@@ -10,15 +10,20 @@ import (
 
 func TestDB(t *testing.T) {
 	testCases := []struct {
-		desc, identifier, address, arn, az, status string
+		desc, identifier, address, arn, status, instanceclass string
+		masterusername, masterpassword                        string
+		multiaz                                               bool
 	}{
 		{
-			desc:       "All Fields",
-			identifier: "some-identifier",
-			address:    "some-address.com",
-			arn:        "anr:1234:blah",
-			az:         "southeast-2b,",
-			status:     "creating",
+			desc:           "All Fields",
+			identifier:     "some-identifier",
+			address:        "some-address.com",
+			arn:            "anr:1234:blah",
+			multiaz:        true,
+			status:         "creating",
+			instanceclass:  "db.t2.micro",
+			masterusername: "diavolo",
+			masterpassword: "welcome",
 		},
 	}
 	for _, tC := range testCases {
@@ -29,8 +34,16 @@ func TestDB(t *testing.T) {
 					Address: &tC.address,
 				},
 				DBInstanceArn:    &tC.arn,
-				AvailabilityZone: &tC.az,
+				MultiAZ:          &tC.multiaz,
 				DBInstanceStatus: &tC.status,
+				DBInstanceClass:  &tC.instanceclass,
+				MasterUsername:   &tC.masterusername,
+				//		StorageAllocatedGb: r.AllocatedStorage,
+				//		StorageType:        r.StorageType,
+				//		StorageIops:        r.Iops,
+				//		StorageEncrypted:   r.StorageEncrypted,
+				//		Engine:             r.Engine,
+				//		EngineVersion:      r.EngineVersion,
 			}
 
 			result := db.FromDBInstance(&r)
@@ -40,11 +53,14 @@ func TestDB(t *testing.T) {
 			if result.ARN != &tC.arn {
 				t.Errorf("Expected DB ARN %s, got %s.", tC.arn, *result.ARN)
 			}
-			// if result.AZ != &tC.az {
-			// 	t.Errorf("Expected DB AZ %s, got %s.", tC.az, *result.AZ)
-			// }
+			if result.MultiAZ != &tC.multiaz {
+				t.Errorf("Expected DB MultiAZ %s, got %s.", tC.multiaz, *result.MultiAZ)
+			}
 			if result.Status != &tC.status {
 				t.Errorf("Expected DB Status %s, got %s.", tC.status, *result.Status)
+			}
+			if result.DBInstanceClass != &tC.instanceclass {
+				t.Errorf("Expected DB InstanceClass %s, got %s.", tC.instanceclass, *result.DBInstanceClass)
 			}
 			// if result.Address != &tC.address {
 			// 	t.Errorf("Expected DB Address %s, got %s.", tC.address, *result.Address)
@@ -93,14 +109,14 @@ func TestFromDBInstances(t *testing.T) {
 func TestString(t *testing.T) {
 	arn := "arn"
 	id := "id"
-	az := "az"
+	az := true
 	status := "status"
 
 	db := db.DB{
-		Name:   &id,
-		Status: &status,
-		ARN:    &arn,
-		AZ:     &az,
+		Name:    &id,
+		Status:  &status,
+		ARN:     &arn,
+		MultiAZ: &az,
 	}
 
 	got := db.String()
