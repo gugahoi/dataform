@@ -44,7 +44,7 @@ func init() {
 	createCmd.Flags().BoolVarP(&dbMultiAZ, "multiaz", "m", false, "db instance multiAZ")
 	createCmd.Flags().Int64VarP(&dbPort, "port", "P", 5432, "db instance port number")
 	createCmd.Flags().Int64VarP(&dbStorageAllocatedGB, "size", "s", 5, "db storage size allocated in GB")
-	createCmd.Flags().BoolVarP(&dbStorageEncrypted, "encrypted", "e", true, "db instance encryption")
+	createCmd.Flags().BoolVarP(&dbStorageEncrypted, "encrypted", "E", true, "db instance encryption")
 	createCmd.Flags().StringVarP(&dbStorageType, "type", "t", "gp2", "db storage type")
 	createCmd.Flags().Int64VarP(&dbStorageIops, "iops", "i", 0, "db requested iops")
 	createCmd.Flags().StringVarP(&dbSubnetGroup, "subnetgroup", "N", "", "db subnet group name")
