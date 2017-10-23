@@ -13,27 +13,15 @@ import (
 var (
 	// Defaults are rds instance defaults
 	Defaults = &DB{
-		MultiAZ:                    aws.Bool(true),
-		DBInstanceClass:            aws.String("db.t2.small"),
-		CopyTagsToSnapshot:         aws.Bool(true),
-		Engine:                     aws.String("postgres"),
-		EngineVersion:              aws.String("9.6.3"),
-		PreferredBackupWindow:      aws.String("14:00-15:00"),
-		PreferredMaintenanceWindow: aws.String("tue:15:00-tue:16:00"),
-		StorageAllocatedGb:         aws.Int64(5),
-		Port:                       aws.Int64(5432),
-		StorageType:                aws.String("gp2"),
-		StorageEncrypted:           aws.Bool(true),
-	}
-
-	// ValidInstanceTypes are the allowed rds instance types
-	ValidInstanceTypes = map[string]int{
-		"db.t1.micro": 1, "db.m1.small": 1, "db.m1.medium": 1, "db.m1.large": 1, "db.m1.xlarge": 1,
-		"db.m2.xlarge": 1, "db.m2.2xlarge": 1, "db.m2.4xlarge": 1, "db.m3.medium": 1, "db.m3.large": 1,
-		"db.m3.xlarge": 1, "db.m3.2xlarge": 1, "db.m4.large": 1, "db.m4.xlarge": 1, "db.m4.2xlarge": 1,
-		"db.m4.4xlarge": 1, "db.m4.10xlarge": 1, "db.r3.large": 1, "db.r3.xlarge": 1, "db.r3.2xlarge": 1,
-		"db.r3.4xlarge": 1, "db.r3.8xlarge": 1, "db.t2.micro": 1, "db.t2.small": 1, "db.t2.medium": 1,
-		"db.t2.large": 1,
+		DBInstanceClass:    aws.String("db.t2.small"),
+		CopyTagsToSnapshot: aws.Bool(true),
+		Engine:             aws.String("postgres"),
+		EngineVersion:      aws.String("9.6.3"),
+		MultiAZ:            aws.Bool(false),
+		Port:               aws.Int64(5432),
+		StorageAllocatedGB: aws.Int64(5),
+		StorageEncrypted:   aws.Bool(true),
+		StorageType:        aws.String("gp2"),
 	}
 
 	errInvalidUsernamePassword     = fmt.Errorf("username and password cannot be empty")
@@ -60,7 +48,7 @@ func (r *Manager) Create(db *DB) (*DB, error) {
 		return nil, err
 	}
 	dbInput := &rds.CreateDBInstanceInput{
-		AllocatedStorage:     database.StorageAllocatedGb,
+		AllocatedStorage:     database.StorageAllocatedGB,
 		DBInstanceClass:      database.DBInstanceClass,
 		DBInstanceIdentifier: database.Name,
 		Engine:               database.Engine,
@@ -78,6 +66,12 @@ func (r *Manager) Create(db *DB) (*DB, error) {
 
 	if database.KMSKeyArn != nil {
 		dbInput.KmsKeyId = database.KMSKeyArn
+	}
+	if database.PreferredBackupWindow != nil {
+		dbInput.PreferredBackupWindow = database.PreferredBackupWindow
+	}
+	if database.PreferredMaintenanceWindow != nil {
+		dbInput.PreferredMaintenanceWindow = database.PreferredMaintenanceWindow
 	}
 	if database.Tags != nil {
 		tags := make([]*rds.Tag, 0, 10)
@@ -128,24 +122,14 @@ func validateDBInput(db *DB) (*DB, error) {
 	if db.EngineVersion == nil {
 		db.EngineVersion = Defaults.EngineVersion
 	}
-	if db.StorageAllocatedGb == nil {
-		db.StorageAllocatedGb = Defaults.StorageAllocatedGb
+	if db.StorageAllocatedGB == nil {
+		db.StorageAllocatedGB = Defaults.StorageAllocatedGB
 	}
 	if db.StorageType == nil {
 		db.StorageType = Defaults.StorageType
 	}
 	if db.StorageEncrypted == nil {
 		db.StorageEncrypted = Defaults.StorageEncrypted
-	}
-	if db.PreferredBackupWindow == nil {
-		db.PreferredBackupWindow = Defaults.PreferredBackupWindow
-	}
-	if db.PreferredMaintenanceWindow == nil {
-		db.PreferredMaintenanceWindow = Defaults.PreferredMaintenanceWindow
-	}
-
-	if _, ok := ValidInstanceTypes[*db.DBInstanceClass]; !ok {
-		return nil, fmt.Errorf("error: invalid DBInstanceClass specified %s", *db.DBInstanceClass)
 	}
 
 	return db, nil

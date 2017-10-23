@@ -28,7 +28,7 @@ type DB struct {
 	SecurityGroups             []*string
 	MasterUserPassword         *string
 	MasterUsername             *string
-	StorageAllocatedGb         *int64
+	StorageAllocatedGB         *int64
 	StorageType                *string
 	StorageIops                *int64
 	StorageEncrypted           *bool
@@ -48,7 +48,7 @@ func FromDBInstance(r *rds.DBInstance) *DB {
 		DBInstanceClass:    r.DBInstanceClass,
 		// SecurityGroups:     r.VpcSecurityGroups,
 		MasterUsername:     r.MasterUsername,
-		StorageAllocatedGb: r.AllocatedStorage,
+		StorageAllocatedGB: r.AllocatedStorage,
 		StorageType:        r.StorageType,
 		StorageIops:        r.Iops,
 		StorageEncrypted:   r.StorageEncrypted,
