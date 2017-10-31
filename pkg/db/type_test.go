@@ -13,11 +13,13 @@ func TestDB(t *testing.T) {
 		desc, identifier, address, arn, status, instanceclass string
 		masterusername, masterpassword                        string
 		multiaz                                               bool
+		port                                                  int64
 	}{
 		{
 			desc:           "All Fields",
 			identifier:     "some-identifier",
 			address:        "some-address.com",
+			port:           5432,
 			arn:            "anr:1234:blah",
 			multiaz:        true,
 			status:         "creating",
@@ -32,6 +34,7 @@ func TestDB(t *testing.T) {
 				DBInstanceIdentifier: &tC.identifier,
 				Endpoint: &rds.Endpoint{
 					Address: &tC.address,
+					Port:    &tC.port,
 				},
 				DBInstanceArn:    &tC.arn,
 				MultiAZ:          &tC.multiaz,
@@ -54,7 +57,7 @@ func TestDB(t *testing.T) {
 				t.Errorf("Expected DB ARN %s, got %s.", tC.arn, *result.ARN)
 			}
 			if result.MultiAZ != &tC.multiaz {
-				t.Errorf("Expected DB MultiAZ %s, got %s.", tC.multiaz, *result.MultiAZ)
+				t.Errorf("Expected DB MultiAZ %v, got %v.", tC.multiaz, *result.MultiAZ)
 			}
 			if result.Status != &tC.status {
 				t.Errorf("Expected DB Status %s, got %s.", tC.status, *result.Status)
@@ -62,9 +65,12 @@ func TestDB(t *testing.T) {
 			if result.DBInstanceClass != &tC.instanceclass {
 				t.Errorf("Expected DB InstanceClass %s, got %s.", tC.instanceclass, *result.DBInstanceClass)
 			}
-			// if result.Address != &tC.address {
-			// 	t.Errorf("Expected DB Address %s, got %s.", tC.address, *result.Address)
-			// }
+			if result.Address != &tC.address {
+				t.Errorf("Expected DB Address %s, got %s.", tC.address, *result.Address)
+			}
+			if result.Port != &tC.port {
+				t.Errorf("Expected DB Port %d, got %d.", tC.port, *result.Port)
+			}
 		})
 	}
 }

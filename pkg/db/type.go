@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 )
 
+// Tag encapsulates an aws resource tag key/value
 type Tag struct {
 	Key   *string
 	Value *string
@@ -63,6 +64,9 @@ func FromDBInstance(r *rds.DBInstance) *DB {
 	}
 	if r.Endpoint != nil && r.Endpoint.Address != nil {
 		db.Address = r.Endpoint.Address
+	}
+	if r.Endpoint != nil && r.Endpoint.Port != nil {
+		db.Port = r.Endpoint.Port
 	}
 	return db
 }
