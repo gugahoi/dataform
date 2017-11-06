@@ -2,10 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MYOB-Technology/dataform/pkg/db"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/spf13/cobra"
+)
+
+var (
+	deleteWait bool
 )
 
 // deleteCmd represents the delete command
@@ -17,6 +22,7 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
+	deleteCmd.Flags().BoolVarP(&deleteWait, "wait", "w", false, "wait for deletion to complete")
 	RootCmd.AddCommand(deleteCmd)
 }
 
@@ -25,11 +31,24 @@ func deleteFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	name := args[0]
 
+	fmt.Printf("deleting instance %s\n", name)
 	instance, err := manager.Delete(name)
 	if err != nil {
-		fmt.Printf("Failed to delete RDS Instance: %v", getAwsError(err))
+		fmt.Printf("failed to delete RDS instance: %v", getAwsError(err))
 		return
 	}
 
-	fmt.Printf("%s\t%s\n", *instance.ARN, *instance.Status)
+	if deleteWait {
+		go manager.SigHandler()
+		state := manager.WaitForFinalState(*instance.Name, 20, 1800)
+		for poll := range state {
+			if poll.Err != nil {
+				if !strings.Contains(poll.Err.Error(), "DBInstanceNotFound") {
+					fmt.Printf("error: %v", poll.Err)
+					return
+				}
+			}
+			fmt.Printf("%s instance %s\n", poll.Status, name)
+		}
+	}
 }

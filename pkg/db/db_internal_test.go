@@ -200,6 +200,49 @@ func TestList(t *testing.T) {
 		})
 	}
 }
+func TestIsFinalState(t *testing.T) {
+	var cases = []struct {
+		name, arn, state string
+		final            bool
+		err              error
+	}{
+		{name: "Happy Path", arn: "here-is-the-arn", final: true, state: StatusAvailable, err: nil},
+		{name: "Failed DB Path", arn: "here-is-the-arn", final: true, state: StatusFailed, err: errStateTransitionedToErrorCondition},
+		{name: "Storage Full DB Path", arn: "here-is-the-arn", final: true, state: StatusStorageFull, err: errStateTransitionedToErrorCondition},
+		{name: "Transitioning DB State Path", arn: "here-is-the-arn", final: false, state: StatusCreating, err: nil},
+	}
+
+	for _, tC := range cases {
+		t.Run(tC.name, func(t *testing.T) {
+			DBInstance := rds.DBInstance{
+				DBInstanceIdentifier: &tC.name,
+				DBInstanceArn:        &tC.arn,
+				DBInstanceStatus:     &tC.state,
+			}
+			expectedDB := FromDBInstance(&DBInstance)
+
+			svc := mockRdsSvc{
+				DescribeDBInstancesOutput: &rds.DescribeDBInstancesOutput{
+					DBInstances: []*rds.DBInstance{
+						&DBInstance,
+					},
+				},
+			}
+
+			rds := NewManager(svc)
+
+			status := rds.IsFinalState(expectedDB)
+			if status.Err != tC.err {
+				t.Errorf("Expected error to be %s, got %s", tC.err, status.Err)
+			}
+			if status.Final != tC.final {
+				t.Errorf("Expected final state to be %v, got %v", tC.final, status.Final)
+			}
+
+		})
+	}
+
+}
 
 func TestGenerateRandomString(t *testing.T) {
 	testCases := []struct {

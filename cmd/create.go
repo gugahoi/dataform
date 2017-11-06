@@ -25,6 +25,7 @@ var (
 	dbSecurityGroups     []*string
 	dbBackupWindow       string
 	dbMaintenanceWindow  string
+	createWait           bool
 )
 
 // createCmd represents the create command
@@ -51,6 +52,7 @@ func init() {
 	createCmd.Flags().StringVarP(&dbSecurityGroup, "securitygroup", "S", "", "db security group id")
 	createCmd.Flags().StringVarP(&dbBackupWindow, "backup", "B", "", "db preferred backup window")
 	createCmd.Flags().StringVarP(&dbMaintenanceWindow, "maintenance", "M", "", "db preferred maintenance window")
+	createCmd.Flags().BoolVarP(&createWait, "wait", "w", false, "wait for creation to complete")
 	RootCmd.AddCommand(createCmd)
 }
 
@@ -87,11 +89,22 @@ func createFunc(cmd *cobra.Command, args []string) {
 		dbinput.PreferredMaintenanceWindow = &dbMaintenanceWindow
 	}
 
+	fmt.Printf("creating instance %s\n", *dbinput.Name)
 	instance, err := manager.Create(dbinput)
 	if err != nil {
-		fmt.Printf("Failed to create RDS Instance: %v", getAwsError(err))
+		fmt.Printf("failed to create instance: %v", getAwsError(err))
 		return
 	}
-
-	fmt.Printf("%s\t%s\t%s\n", *instance.Name, *instance.ARN, *instance.Status)
+	if createWait {
+		go manager.SigHandler()
+		status := manager.WaitForFinalState(*instance.Name, 20, 1800)
+		for poll := range status {
+			if poll.Err != nil {
+				fmt.Printf("instance transitioned to error condition: %v", err)
+				return
+			}
+			fmt.Printf("%s instance %s\n", poll.Status, *instance.Name)
+		}
+	}
+	fmt.Printf("created %s %s\n", *instance.Name, *instance.ARN)
 }

@@ -3,6 +3,10 @@ package db
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	time "time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -24,21 +28,59 @@ var (
 		StorageType:        aws.String("gp2"),
 	}
 
-	errInvalidUsernamePassword     = fmt.Errorf("username and password cannot be empty")
-	errDbNameMissing               = fmt.Errorf("error: required DB field Name is missing")
-	errDbMasterUsernameMissing     = fmt.Errorf("error: required DB field MasterUsername is missing")
-	errDbMasterUserPasswordMissing = fmt.Errorf("error: required DB field MasterUserPassword is missing")
+	errInvalidUsernamePassword           = fmt.Errorf("username and password cannot be empty")
+	errDbNameMissing                     = fmt.Errorf("error: required DB field Name is missing")
+	errDbMasterUsernameMissing           = fmt.Errorf("error: required DB field MasterUsername is missing")
+	errDbMasterUserPasswordMissing       = fmt.Errorf("error: required DB field MasterUserPassword is missing")
+	errStateTransitionedToErrorCondition = fmt.Errorf("error: db transitioned to error condition")
 )
 
 // Manager uses a svc to talk to AWS RDS
 type Manager struct {
-	Client rdsiface.RDSAPI
+	Client  rdsiface.RDSAPI
+	wait    sync.WaitGroup
+	signals chan os.Signal
+	stop    chan struct{}
 }
 
 // NewManager returns a pointer to a Manager struct.
 // The supplied svc is used to make calls to AWS RDS Service.
 func NewManager(svc rdsiface.RDSAPI) *Manager {
-	return &Manager{svc}
+	stop := make(chan struct{})
+	signals := make(chan os.Signal, 1)
+	return &Manager{
+		Client:  svc,
+		wait:    sync.WaitGroup{},
+		stop:    stop,
+		signals: signals,
+	}
+}
+
+// SigHandler handles signals. Run as a goroutine
+func (r *Manager) SigHandler() {
+	r.wait.Add(1)
+	defer r.wait.Done()
+	signal.Notify(r.signals,
+		os.Interrupt,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	sig := <-r.signals
+	fmt.Printf("signal received: %v\n", sig)
+	r.Stop()
+	return
+}
+
+// SetShutdownChannel allows the use of an external channel to signal closure
+func (r *Manager) SetShutdownChannel(stop chan struct{}) {
+	r.stop = stop
+}
+
+// Stop will tell any goroutines  to shutdown
+func (r *Manager) Stop() {
+	close(r.stop)
+	r.wait.Wait()
+	// Release all remaining resources.
+	r.stop = nil
 }
 
 // Create an RDS Instance from a supplied DB object
@@ -66,6 +108,7 @@ func (r *Manager) Create(db *DB) (*DB, error) {
 
 	if database.KMSKeyArn != nil {
 		dbInput.KmsKeyId = database.KMSKeyArn
+		database.StorageEncrypted = aws.Bool(true)
 	}
 	if database.PreferredBackupWindow != nil {
 		dbInput.PreferredBackupWindow = database.PreferredBackupWindow
@@ -137,9 +180,12 @@ func validateDBInput(db *DB) (*DB, error) {
 
 // Delete an RDS Instance with the given name
 func (r *Manager) Delete(name string) (*DB, error) {
+	now := time.Now()
+	snapshotID := fmt.Sprintf("%s-%s", name, now.Format("20060102150405"))
 	dbInstanceInput := &rds.DeleteDBInstanceInput{
-		DBInstanceIdentifier: aws.String(name),
-		SkipFinalSnapshot:    aws.Bool(false),
+		DBInstanceIdentifier:      aws.String(name),
+		FinalDBSnapshotIdentifier: aws.String(snapshotID),
+		SkipFinalSnapshot:         aws.Bool(false),
 	}
 
 	result, err := r.Client.DeleteDBInstance(dbInstanceInput)
@@ -178,6 +224,89 @@ func (r *Manager) List() ([]*DB, error) {
 	}
 
 	return FromDBInstances(result.DBInstances), nil
+}
+
+// State is used to return whether DB state is finalised or not
+type State struct {
+	Final  bool
+	Status string
+	Err    error
+}
+
+// WaitForFinalState will block until the requested instance is in a known final state
+func (r *Manager) WaitForFinalState(dbname string, pollInterval time.Duration, pollTimeout time.Duration) <-chan State {
+	result := make(chan State)
+	go func() {
+		timeout := time.After(pollTimeout * time.Second)
+		tick := time.Tick(pollInterval * time.Second)
+		r.wait.Add(1)
+		defer close(result)
+		defer r.wait.Done()
+		for {
+			select {
+			case <-r.stop:
+				result <- State{
+					Final:  false,
+					Status: "",
+					Err:    nil,
+				}
+				return
+			case <-timeout:
+				result <- State{
+					Final:  false,
+					Status: "timeout",
+					Err:    fmt.Errorf("error timed out polling for db final state: %s", dbname),
+				}
+				return
+			case <-tick:
+				db, err := r.Stat(dbname)
+				if err != nil {
+					result <- State{
+						Final:  true,
+						Status: StatusDeleted,
+						Err:    err,
+					}
+					return
+				}
+				status := r.IsFinalState(db)
+				result <- status
+				if status.Final {
+					return
+				}
+			}
+		}
+	}()
+	return result
+}
+
+// IsFinalState checks whether the current rds state is final, transitioning, or in an error state
+func (r *Manager) IsFinalState(db *DB) State {
+	if db == nil {
+		return State{
+			Final:  true,
+			Status: StatusDeleted,
+			Err:    nil,
+		}
+	}
+	if FinalStates[*db.Status] {
+		return State{
+			Final:  true,
+			Status: *db.Status,
+			Err:    nil,
+		}
+	}
+	if TransitioningStates[*db.Status] {
+		return State{
+			Final:  false,
+			Status: *db.Status,
+			Err:    nil,
+		}
+	}
+	// if we get here, all other states are error conditions
+	return State{
+		Final: true,
+		Err:   errStateTransitionedToErrorCondition,
+	}
 }
 
 // generateRandomString receives a size and a string of allowed characters and generates a random string of the given size
