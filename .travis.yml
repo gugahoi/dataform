@@ -1,0 +1,12 @@
+language: go
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+services:
+  - docker
+
+script:
+- make install test publish

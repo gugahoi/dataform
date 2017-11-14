@@ -1,7 +1,6 @@
 .PHONY: install test build publish clean
 
 dcr := docker-compose run --rm
-release_bucket := s3://myob-dataform-release
 
 install:
 	@echo "--- Collecting ingredients :bento:"
@@ -20,17 +19,10 @@ build: clean install
 	@echo "--- :windows: 64-bit"
 	${dcr} -e CGO_ENABLED=0 -e GOOS=windows -e GOARCH=amd64 go build -v -o dist/dfm-windows-amd64/dfm-windows-amd64.exe
 
-ifdef BUILDKITE_TAG
+ifdef TRAVIS_TAG
 publish: install
-	@# GITHUB_TOKEN can be found in buildkite secrets bucket
 	@echo "+++ :octocat:"
 	${dcr} goreleaser --skip-validate --rm-dist
-	@echo "+++ :s3:"
-	${dcr} aws s3 sync --acl public-read dist/ ${release_bucket}/${BUILDKITE_TAG}/
-else
-publish: build
-	@echo "+++ :s3:"
-	${dcr} aws s3 sync --acl public-read dist/ ${release_bucket}/latest/
 endif
 
 clean:

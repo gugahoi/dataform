@@ -1,6 +1,6 @@
 # Dataform
 
-[![Build status](https://badge.buildkite.com/c91a2cff4be581231229af430536f69ec8b9359f5efae6f5e1.svg?branch=master)](https://buildkite.com/myob/dataform)
+[![Build Status](https://travis-ci.org/MYOB-Technology/dataform.svg?branch=master)](https://travis-ci.org/MYOB-Technology/dataform)
 
 Easily interact with AWS RDS with a unix like cli interface
 
