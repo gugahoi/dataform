@@ -16,7 +16,7 @@ var (
 // deleteCmd represents the delete command
 var deleteCmd = &cobra.Command{
 	Use:   "delete [rds name]",
-	Short: "Delete an existing RDS database",
+	Short: "Delete an existing RDS instance",
 	Args:  cobra.ExactArgs(1),
 	Run:   deleteFunc,
 }

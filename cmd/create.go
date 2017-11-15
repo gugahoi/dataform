@@ -31,7 +31,7 @@ var (
 // createCmd represents the create command
 var createCmd = &cobra.Command{
 	Use:   "create [rds name]",
-	Short: "Create a new RDS database",
+	Short: "Create a new RDS instance",
 	Args:  cobra.ExactArgs(1),
 	Run:   createFunc,
 }

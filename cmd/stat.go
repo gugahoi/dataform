@@ -11,7 +11,7 @@ import (
 // createCmd represents the create command
 var statCmd = &cobra.Command{
 	Use:   "stat [rds name]",
-	Short: "Describe an RDS database",
+	Short: "Describe an RDS instance",
 	Args:  cobra.ExactArgs(1),
 	Run:   statFunc,
 }
