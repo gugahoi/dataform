@@ -53,13 +53,14 @@ func TestCreate(t *testing.T) {
 
 	for _, tC := range cases {
 		t.Run(tC.name, func(t *testing.T) {
-			DBInput := &DB{
-				Name:               &tC.name,
-				MasterUsername:     &tC.username,
-				MasterUserPassword: &tC.password,
-				MultiAZ:            &tC.multiaz,
-				DBInstanceClass:    &tC.dbinstanceclass,
-			}
+			DBInput := &DB{}
+
+			DBInput.Name = &tC.name
+			DBInput.MasterUsername = &tC.username
+			DBInput.MasterUserPassword = &tC.password
+			DBInput.MultiAZ = &tC.multiaz
+			DBInput.DBInstanceClass = &tC.dbinstanceclass
+
 			DBInstance := rds.DBInstance{
 				MultiAZ:              &tC.multiaz,
 				DBInstanceIdentifier: &tC.name,
@@ -78,12 +79,13 @@ func TestCreate(t *testing.T) {
 			}
 			rds := NewManager(svc)
 
-			db, err := rds.Create(DBInput)
+			db, err := rds.CreateProductionInstance(DBInput)
 			if err != tC.err {
 				t.Errorf("Expected error to be %v, got %v", tC.err, err)
 			}
 
 			if db != nil {
+				t.Logf("DB is not nil 1")
 				if db.ARN != expectedDB.ARN {
 					t.Errorf("Expected db arn to be %v, got %v", expectedDB, db)
 				}

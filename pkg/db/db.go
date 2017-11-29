@@ -15,18 +15,29 @@ import (
 )
 
 var (
-	// Defaults are rds instance defaults
-	Defaults = &DB{
+	// Defaults are rds instance defaults for non production
+	CommonDefaults = InstanceParams{
 		DBInstanceClass:    aws.String("db.t2.small"),
 		CopyTagsToSnapshot: aws.Bool(true),
 		Engine:             aws.String("postgres"),
 		EngineVersion:      aws.String("9.6.3"),
-		MultiAZ:            aws.Bool(false),
 		Port:               aws.Int64(5432),
 		StorageAllocatedGB: aws.Int64(5),
 		StorageEncrypted:   aws.Bool(true),
 		StorageType:        aws.String("gp2"),
 	}
+
+	// DevelopmentDefaults Profile defaults
+	DevelopmentDefaults = ProfileInstanceParams{
+		MultiAZ:               aws.Bool(false),
+		BackupRetentionPeriod: aws.Int64(0),
+	}
+	// ProductionDefaults Profile defaults
+	ProductionDefaults = ProfileInstanceParams{
+		MultiAZ:               aws.Bool(true),
+		BackupRetentionPeriod: aws.Int64(35),
+	}
+	// Defaults composed struct
 
 	errInvalidUsernamePassword           = fmt.Errorf("username and password cannot be empty")
 	errDbNameMissing                     = fmt.Errorf("error: required DB field Name is missing")
@@ -34,6 +45,24 @@ var (
 	errDbMasterUserPasswordMissing       = fmt.Errorf("error: required DB field MasterUserPassword is missing")
 	errStateTransitionedToErrorCondition = fmt.Errorf("error: db transitioned to error condition")
 )
+
+// Set Production Defaults
+func SetProductionDefaults() *DB {
+	db := &DB{
+		InstanceParams:        CommonDefaults,
+		ProfileInstanceParams: ProductionDefaults,
+	}
+	return db
+}
+
+// Set Development Defaults
+func SetDevelopmentDefaults() *DB {
+	db := &DB{
+		InstanceParams:        CommonDefaults,
+		ProfileInstanceParams: DevelopmentDefaults,
+	}
+	return db
+}
 
 // Manager uses a svc to talk to AWS RDS
 type Manager struct {
@@ -83,12 +112,107 @@ func (r *Manager) Stop() {
 	r.stop = nil
 }
 
+// CreateProductionInstance creates an RDS Instance from a supplied DB object with production defaults
+func (r *Manager) CreateProductionInstance(db *DB) (*DB, error) {
+	Defaults := SetProductionDefaults()
+	database, err := r.Create(db, Defaults)
+	return database, err
+}
+
+// CreateDevelopmentInstance creates an RDS Instance from a supplied DB object with production defaults
+func (r *Manager) CreateDevelopmentInstance(db *DB) (*DB, error) {
+	Defaults := SetDevelopmentDefaults()
+	database, err := r.Create(db, Defaults)
+	return database, err
+}
+
+// Create a DB Instance given a profile
+func (r *Manager) CreateDBInstance(db *DB, profile int) (*DB, error) {
+	if profile == Production {
+		database, err := r.CreateProductionInstance(db)
+		return database, err
+	} else {
+		database, err := r.CreateDevelopmentInstance(db)
+		return database, err
+	}
+}
+
 // Create an RDS Instance from a supplied DB object
-func (r *Manager) Create(db *DB) (*DB, error) {
-	database, err := validateDBInput(db)
+func (r *Manager) Create(db *DB, defaults *DB) (*DB, error) {
+
+	err := validateDBInstanceInput(db)
 	if err != nil {
 		return nil, err
 	}
+
+	database, err := setDBInstanceDefaults(db, defaults)
+	if err != nil {
+		return nil, err
+	}
+
+	dbInput, err := mapDBInstanceParamaters(database)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := r.Client.CreateDBInstance(dbInput)
+	if err != nil {
+		return nil, err
+	}
+
+	return FromDBInstance(result.DBInstance), nil
+}
+
+func validateDBInstanceInput(db *DB) error {
+	if db.Name == nil {
+		return errDbNameMissing
+	}
+	if db.MasterUsername == nil {
+		return errDbMasterUsernameMissing
+	}
+	if len(*db.MasterUsername) == 0 {
+		return errDbMasterUsernameMissing
+	}
+	if db.MasterUserPassword == nil {
+		return errDbMasterUserPasswordMissing
+	}
+	if len(*db.MasterUserPassword) == 0 {
+		return errDbMasterUserPasswordMissing
+	}
+	return nil
+}
+
+func setDBInstanceDefaults(db *DB, Defaults *DB) (*DB, error) {
+
+	db.Engine = Defaults.Engine
+	db.CopyTagsToSnapshot = Defaults.CopyTagsToSnapshot
+
+	if db.MultiAZ == nil {
+		db.MultiAZ = Defaults.MultiAZ
+	}
+	if db.DBInstanceClass == nil {
+		db.DBInstanceClass = Defaults.DBInstanceClass
+	}
+	if db.EngineVersion == nil {
+		db.EngineVersion = Defaults.EngineVersion
+	}
+	if db.StorageAllocatedGB == nil {
+		db.StorageAllocatedGB = Defaults.StorageAllocatedGB
+	}
+	if db.StorageType == nil {
+		db.StorageType = Defaults.StorageType
+	}
+	if db.StorageEncrypted == nil {
+		db.StorageEncrypted = Defaults.StorageEncrypted
+	}
+	if db.BackupRetentionPeriod == nil {
+		db.BackupRetentionPeriod = Defaults.BackupRetentionPeriod
+	}
+	return db, nil
+}
+
+func mapDBInstanceParamaters(database *DB) (*rds.CreateDBInstanceInput, error) {
+
 	dbInput := &rds.CreateDBInstanceInput{
 		AllocatedStorage:     database.StorageAllocatedGB,
 		DBInstanceClass:      database.DBInstanceClass,
@@ -104,6 +228,7 @@ func (r *Manager) Create(db *DB) (*DB, error) {
 		StorageEncrypted:     database.StorageEncrypted,
 		StorageType:          database.StorageType,
 		Iops:                 database.StorageIops,
+		BackupRetentionPeriod: database.BackupRetentionPeriod,
 	}
 
 	if database.KMSKeyArn != nil {
@@ -126,56 +251,7 @@ func (r *Manager) Create(db *DB) (*DB, error) {
 		}
 		dbInput.Tags = tags
 	}
-
-	result, err := r.Client.CreateDBInstance(dbInput)
-	if err != nil {
-		return nil, err
-	}
-
-	return FromDBInstance(result.DBInstance), nil
-}
-
-func validateDBInput(db *DB) (*DB, error) {
-	if db.Name == nil {
-		return nil, errDbNameMissing
-	}
-	if db.MasterUsername == nil {
-		return nil, errDbMasterUsernameMissing
-	}
-	if len(*db.MasterUsername) == 0 {
-		return nil, errDbMasterUsernameMissing
-	}
-	if db.MasterUserPassword == nil {
-		return nil, errDbMasterUserPasswordMissing
-	}
-	if len(*db.MasterUserPassword) == 0 {
-		return nil, errDbMasterUserPasswordMissing
-	}
-
-	// cannot override this one for now
-	db.Engine = Defaults.Engine
-	db.CopyTagsToSnapshot = Defaults.CopyTagsToSnapshot
-
-	if db.MultiAZ == nil {
-		db.MultiAZ = Defaults.MultiAZ
-	}
-	if db.DBInstanceClass == nil {
-		db.DBInstanceClass = Defaults.DBInstanceClass
-	}
-	if db.EngineVersion == nil {
-		db.EngineVersion = Defaults.EngineVersion
-	}
-	if db.StorageAllocatedGB == nil {
-		db.StorageAllocatedGB = Defaults.StorageAllocatedGB
-	}
-	if db.StorageType == nil {
-		db.StorageType = Defaults.StorageType
-	}
-	if db.StorageEncrypted == nil {
-		db.StorageEncrypted = Defaults.StorageEncrypted
-	}
-
-	return db, nil
+	return dbInput, nil
 }
 
 // Delete an RDS Instance with the given name

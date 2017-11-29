@@ -118,12 +118,12 @@ func TestString(t *testing.T) {
 	az := true
 	status := "status"
 
-	db := db.DB{
-		Name:    &id,
-		Status:  &status,
-		ARN:     &arn,
-		MultiAZ: &az,
-	}
+	db := db.DB{}
+
+	db.Name = &id
+	db.Status = &status
+	db.ARN = &arn
+	db.MultiAZ = &az
 
 	got := db.String()
 	expected := fmt.Sprintf("name: %s, arn: %s", id, arn)

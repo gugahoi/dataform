@@ -12,15 +12,20 @@ type Tag struct {
 	Value *string
 }
 
-// DB Instance type
-type DB struct {
+// Profiles enum
+const (
+	Production = iota
+	Development
+)
+
+// DB InstanceParam type
+type InstanceParams struct {
 	Name                       *string
 	Status                     *string
 	Engine                     *string
 	EngineVersion              *string
 	ARN                        *string
 	CopyTagsToSnapshot         *bool
-	MultiAZ                    *bool
 	Address                    *string
 	DBInstanceClass            *string
 	KMSKeyArn                  *string
@@ -38,16 +43,26 @@ type DB struct {
 	Tags                       []*Tag
 }
 
+// ProfileInstanceParams these can change based on the profile
+type ProfileInstanceParams struct {
+	MultiAZ               *bool
+	BackupRetentionPeriod *int64
+}
+
+// DB Instance Type
+type DB struct {
+	InstanceParams
+	ProfileInstanceParams
+}
+
 // FromDBInstance converts an *rds.DBInstance type to *DB type
 func FromDBInstance(r *rds.DBInstance) *DB {
-	db := &DB{
+	var Params = InstanceParams{
 		ARN:                r.DBInstanceArn,
 		Name:               r.DBInstanceIdentifier,
 		Status:             r.DBInstanceStatus,
 		CopyTagsToSnapshot: r.CopyTagsToSnapshot,
-		MultiAZ:            r.MultiAZ,
 		DBInstanceClass:    r.DBInstanceClass,
-		// SecurityGroups:     r.VpcSecurityGroups,
 		MasterUsername:     r.MasterUsername,
 		StorageAllocatedGB: r.AllocatedStorage,
 		StorageType:        r.StorageType,
@@ -56,6 +71,17 @@ func FromDBInstance(r *rds.DBInstance) *DB {
 		Engine:             r.Engine,
 		EngineVersion:      r.EngineVersion,
 	}
+
+	var ProfileParams = ProfileInstanceParams{
+		MultiAZ:               r.MultiAZ,
+		BackupRetentionPeriod: r.BackupRetentionPeriod,
+	}
+
+	var db = &DB{
+		InstanceParams:        Params,
+		ProfileInstanceParams: ProfileParams,
+	}
+
 	if r.KmsKeyId != nil {
 		db.KMSKeyArn = r.KmsKeyId
 	}
@@ -77,7 +103,6 @@ func FromDBInstances(r []*rds.DBInstance) []*DB {
 	for _, instance := range r {
 		DBs = append(DBs, FromDBInstance(instance))
 	}
-
 	return DBs
 }
 

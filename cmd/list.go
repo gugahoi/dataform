@@ -11,7 +11,7 @@ import (
 // createCmd represents the create command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all RDS databases in a region",
+	Short: "List all RDS instances in a region",
 	Run:   listFunc,
 }
 

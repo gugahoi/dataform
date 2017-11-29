@@ -9,23 +9,24 @@ import (
 )
 
 var (
-	dbMasterUsername     string
-	dbMasterPassword     string
-	dbInstanceClass      string
-	dbEngine             string
-	dbEngineVersion      string
-	dbMultiAZ            bool
-	dbPort               int64
-	dbStorageAllocatedGB int64
-	dbStorageEncrypted   bool
-	dbStorageType        string
-	dbStorageIops        int64
-	dbSubnetGroup        string
-	dbSecurityGroup      string
-	dbSecurityGroups     []*string
-	dbBackupWindow       string
-	dbMaintenanceWindow  string
-	createWait           bool
+	dbMasterUsername      string
+	dbMasterPassword      string
+	dbInstanceClass       string
+	dbEngine              string
+	dbEngineVersion       string
+	dbMultiAZ             bool
+	dbPort                int64
+	dbStorageAllocatedGB  int64
+	dbStorageEncrypted    bool
+	dbStorageType         string
+	dbStorageIops         int64
+	dbSubnetGroup         string
+	dbSecurityGroup       string
+	dbSecurityGroups      []*string
+	dbBackupWindow        string
+	dbMaintenanceWindow   string
+	dbBackupRetentionDays int64
+	createWait            bool
 )
 
 // createCmd represents the create command
@@ -52,6 +53,7 @@ func init() {
 	createCmd.Flags().StringVarP(&dbSecurityGroup, "securitygroup", "S", "", "db security group id")
 	createCmd.Flags().StringVarP(&dbBackupWindow, "backup", "B", "", "db preferred backup window")
 	createCmd.Flags().StringVarP(&dbMaintenanceWindow, "maintenance", "M", "", "db preferred maintenance window")
+	createCmd.Flags().Int64VarP(&dbBackupRetentionDays, "backupretentiondays", "d", 20, "db preferred maintenance window")
 	createCmd.Flags().BoolVarP(&createWait, "wait", "w", false, "wait for creation to complete")
 	RootCmd.AddCommand(createCmd)
 }
@@ -61,17 +63,18 @@ func createFunc(cmd *cobra.Command, args []string) {
 	manager := db.NewManager(rds.New(session))
 	name := args[0]
 
-	dbinput := &db.DB{
-		MasterUsername:     &dbMasterUsername,
-		MasterUserPassword: &dbMasterPassword,
-		Engine:             &dbEngine,
-		EngineVersion:      &dbEngineVersion,
-		DBInstanceClass:    &dbInstanceClass,
-		Name:               &name,
-		MultiAZ:            &dbMultiAZ,
-		Port:               &dbPort,
-		StorageAllocatedGB: &dbStorageAllocatedGB,
-	}
+	dbinput := &db.DB{}
+	dbinput.MasterUsername = &dbMasterUsername
+	dbinput.MasterUserPassword = &dbMasterPassword
+	dbinput.Engine = &dbEngine
+	dbinput.EngineVersion = &dbEngineVersion
+	dbinput.DBInstanceClass = &dbInstanceClass
+	dbinput.Name = &name
+	dbinput.Port = &dbPort
+	dbinput.StorageAllocatedGB = &dbStorageAllocatedGB
+	dbinput.MultiAZ = &dbMultiAZ
+	dbinput.BackupRetentionPeriod = &dbBackupRetentionDays
+
 	if dbStorageIops > 0 {
 		dbinput.StorageIops = &dbStorageIops
 	}
@@ -90,7 +93,9 @@ func createFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("creating instance %s\n", *dbinput.Name)
-	instance, err := manager.Create(dbinput)
+
+	instance, err := manager.CreateDBInstance(dbinput, db.Development)
+
 	if err != nil {
 		fmt.Printf("failed to create instance: %v", getAwsError(err))
 		return
