@@ -268,13 +268,16 @@ func truncateBytes(s string, n int) string {
 
 // genPassword generates a password of length l
 func genPassword(l int) (p string, err error) {
+	// url non-encode characters: [0-9a-zA-Z$.+!*(),_-]
 	allow := &unicode.RangeTable{
 		R16: []unicode.Range16{
-			{0x0020, 0x0021, 1}, // ' ' - '!'
-			{0x0023, 0x0026, 1}, // '#' - '&'
-			{0x0028, 0x005b, 1}, // '(' - '['
-			{0x005d, 0x005f, 1}, // ']' - '_'
-			{0x0061, 0x007e, 1}, // 'a' - '~'
+			{0x0030, 0x0039, 1}, // '0' - '9'
+			{0x0021, 0x0021, 1}, // '!' - '!'
+			{0x0024, 0x0024, 1}, // '$' - '$'
+			{0x0028, 0x002e, 1}, // '(' - '.'
+			{0x0041, 0x005a, 1}, // 'A' - 'Z'
+			{0x005f, 0x005f, 1}, // '_' - '_'
+			{0x0061, 0x007a, 1}, // 'a' - 'z'
 		},
 	}
 
