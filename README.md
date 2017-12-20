@@ -1,3 +1,8 @@
+## Development on dataform has been stopped due to no need for a separate tool
+
+
+
+
 # Dataform
 
 [![Build Status](https://travis-ci.org/MYOB-Technology/dataform.svg?branch=master)](https://travis-ci.org/MYOB-Technology/dataform)
